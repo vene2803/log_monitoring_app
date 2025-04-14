@@ -1,26 +1,34 @@
+#!/usr/bin/env python3 
+
 import logging
 from datetime import datetime
 from collections import defaultdict
 
 log_file_path = "./logs.log"  # Expecting the log file to be in the same directory as the .py script
+output_file = "./job_warnings_errors.txt"  # Output log file (text format)
 
 WARNING_THRESHOLD = 300  # 5 minutes in seconds
 ERROR_THRESHOLD = 600    # 10 minutes in seconds
 
+formatter = logging.Formatter('%(levelname)s: %(message)s') #here can be edited as prefence, it can be added to display the time of the job as well;
 # cli output
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO) # Log all levels (INFO, WARNING, ERROR) to this file
-formatter = logging.Formatter('%(levelname)s: %(message)s')
 console_handler.setFormatter(formatter)
 
-logging.basicConfig(level=logging.INFO, handlers=[console_handler])
+# file output
+file_handler = logging.FileHandler(output_file, mode='w') #write output file;
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
+
+logging.basicConfig(level=logging.INFO,format='%(levelname)s: %(message)s', handlers=[console_handler, file_handler])
 
 # The logs.log file is a raw file with strings; we need to convert the string time to datetime object using the specific library;
 def parse_time(time_str):
     return datetime.strptime(time_str.strip(), "%H:%M:%S")
 
 def monitor_logs(log_file_path):
-    job_events = defaultdict(dict)
+    job_events = defaultdict(dict) #using dictionary to store for each PID the Start and End datetime object;
     durations = {}
 
     with open(log_file_path, 'r') as file:
@@ -37,7 +45,7 @@ def monitor_logs(log_file_path):
     for pid, times in job_events.items():
         if "START" in times and "END" in times:
             duration = (times["END"] - times["START"]).total_seconds()
-            durations[pid] = duration
+            durations[pid] = duration # calculated job duration in the durations dictionary (between Start-End)
 
             if duration > ERROR_THRESHOLD:
                 logging.error(f"Job {pid} ran for {duration:.0f} seconds. [ERROR]")
